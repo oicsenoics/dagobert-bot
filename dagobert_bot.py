@@ -46,3 +46,7 @@ for symbol in targets:
                 break 
     except Exception as e:
         print(f"❌ Fehler bei {symbol}: {e}")
+# Hält den kostenlosen Render Web Service dauerhaft stumm im Hintergrund am Leben
+import time
+while True:
+    time.sleep(3600)
