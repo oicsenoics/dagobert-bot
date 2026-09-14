@@ -2,68 +2,54 @@ import alpaca_trade_api as tradeapi
 import os
 import sys
 import threading
+import time
 from flask import Flask
 
-# 🌐 1. DAS ALIBI-FENSTER FÜR RENDER (Kostenloser Web-Service Schutz)
 app = Flask(__name__)
-
 @app.route('/')
-def home():
-    return "Dagobert-Bot läuft im Hintergrund!", 200
-
-def run_flask():
-    # Render verlangt standardmäßig den Port 10000
-    app.run(host='0.0.0.0', port=10000)
-
-# Startet die Alibi-Webseite in einem eigenen, stummen Hintergrundkanal
+def home(): return "Dagobert-Bot läuft mit Kurs-Punks!", 200
+def run_flask(): app.run(host='0.0.0.0', port=10000)
 threading.Thread(target=run_flask, daemon=True).start()
 
-# 🔑 2. DAS ECHTE HANDELSMODUL
+# API-Login
 API_KEY = os.environ.get("ALPACA_API_KEY")
 SECRET_KEY = os.environ.get("ALPACA_SECRET_KEY")
-BASE_URL = "https://api.alpaca.markets"
+BASE_URL = "https://alpaca.markets"
 
 try:
     api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL, api_version='v2')
     konto = api.get_account()
 except Exception as e:
-    print(f"❌ API-Verbindungsfehler: {e}")
     sys.exit()
 
-STAMM_BUDGET = 100.00
-aktuelles_guthaben = float(konto.cash)
-klon_faktor = int(aktuelles_guthaben // STAMM_BUDGET)
-if klon_faktor < 1: klon_faktor = 1
+# DIE NEUE DOPPEL-STRATEGIE (FÜRS WOCHENENDE VORBEREITET)
+STREBER_BUDGET = 15.00
+PUNK_BUDGET = 10.00
 
-einsatz_pro_trade = 25.00 * klon_faktor
-targets = ["XPEV", "NVDA", "TSM", "BABA"]
-print(f"🤖 KLON-ARMEE AKTIVIERTE STUFE: {klon_faktor} (Einsatz: {einsatz_pro_trade:.2f} USD)")
+streber_targets = ["XPEV", "NVDA", "TSM", "BABA"]
+punk_targets = ["PLTR", "MARA", "GME"]
 
-for symbol in targets:
+# 1. DER STREBER-SCAN (Sture Anomalie-Jagd)
+for symbol in streber_targets:
     try:
         barset = api.get_bars(symbol, '1Min', limit=5).df
         if not barset.empty:
             kurve = barset['close'].tolist()
-            letzter_kurs = kurve[-1]
-            
-            if letzter_kurs < (kurve[-3] * 0.995):
-                print(f"🔥 ANOMALIE BEI {symbol} ERKANNT!")
-                anzahl_aktien = einsatz_pro_trade / letzter_kurs
-                
-                api.submit_order(
-                    symbol=symbol,
-                    qty=anzahl_aktien,
-                    side='buy',
-                    type='market',
-                    time_in_force='day'
-                )
-                print(f"✅ ECHTGELD-ORDER GESENDET!")
-                break 
-    except Exception as e:
-        print(f"❌ Fehler bei {symbol}: {e}")
+            if kurve[-1] < (kurve[-3] * 0.995): # Harter Absacker
+                api.submit_order(symbol=symbol, qty=(STREBER_BUDGET/kurve[-1]), side='buy', type='market', time_in_force='day')
+                break
+    except: pass
 
-# Hält den Server dauerhaft stumm am Leben
-import time
-while True:
-    time.sleep(3600)
+# 2. DER PUNK-SCAN (Erhöhte Action kurz vor Schluss!)
+for symbol in punk_targets:
+    try:
+        barset = api.get_bars(symbol, '1Min', limit=5).df
+        if not barset.empty:
+            kurve = barset['close'].tolist()
+            # Punks brauchen weniger Hürden: Wenn die Aktie in den letzten 2 Min einfach nur im Aufwärtstrend zuckt, springt der Bot auf!
+            if kurve[-1] > kurve[-2]:
+                api.submit_order(symbol=symbol, qty=(PUNK_BUDGET/kurve[-1]), side='buy', type='market', time_in_force='day')
+                break
+    except: pass
 
+while True: time.sleep(3600)
