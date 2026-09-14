@@ -14,7 +14,7 @@ threading.Thread(target=run_flask, daemon=True).start()
 # API-Login
 API_KEY = os.environ.get("ALPACA_API_KEY")
 SECRET_KEY = os.environ.get("ALPACA_SECRET_KEY")
-BASE_URL = "https://alpaca.markets"
+BASE_URL = "https://api.alpaca.markets"
 
 try:
     api = tradeapi.REST(API_KEY, SECRET_KEY, BASE_URL, api_version='v2')
